@@ -42,7 +42,6 @@ const defaultScrub = isMobile ? 0.3 : 0.8;
 const mm = gsap.matchMedia();
 mm.add("(max-width: 1922px)", () => {
     gsap.set(["#cloudStart-L", "#cloudStart-R"], { x: 10, opacity: 1 });
-});
 
 /* =========================================================
    ANIMAZIONE TESTI / SLIDES (Accelerata)
