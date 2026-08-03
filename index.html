@@ -1,15 +1,15 @@
-[index.html](https://github.com/user-attachments/files/30680440/index.html)
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Sito in Allestimento</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body, html {
@@ -17,10 +17,12 @@
       height: 100%;
       overflow: hidden;
       background-color: #000;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Gestione della safe area per telefoni con notch */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
     #canvas {
@@ -31,42 +33,48 @@
       height: 100%;
       display: block;
       z-index: 1;
+      touch-action: none;
     }
 
     .card {
       position: relative;
       z-index: 2;
-      background: rgba(10, 10, 18, 0.45);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 20px;
-      padding: 40px 50px;
+      background: rgba(10, 10, 18, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 32px 24px;
       text-align: center;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-      max-width: 90%;
-      width: 480px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      width: calc(100% - 40px);
+      max-width: 380px;
+      margin: 0 auto;
+      pointer-events: none; /* Lascia passare i tocchi sullo sfondo se si clicca fuori dal testo */
     }
 
     h1 {
       color: #ffffff;
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-size: clamp(1.4rem, 6vw, 2.2rem);
       font-weight: 700;
       letter-spacing: -0.5px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      line-height: 1.2;
       text-transform: uppercase;
     }
 
     p {
-      color: rgba(255, 255, 255, 0.85);
-      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: clamp(0.95rem, 4vw, 1.15rem);
       font-weight: 400;
-      letter-spacing: 0.5px;
+      line-height: 1.5;
+      letter-spacing: 0.2px;
     }
 
     .highlight {
       color: #00ffcc;
       font-weight: 600;
+      display: inline-block;
     }
   </style>
 </head>
@@ -76,7 +84,7 @@
 
   <div class="card">
     <h1>Sito in allestimento</h1>
-    <p>Riapre il <span class="highlight">4 Agosto 2026</span> alle <span class="highlight">17:00</span> <br><br><br> by Yuri</p>
+    <p>Riapre il <span class="highlight">4 Agosto 2026</span><br>alle <span class="highlight">ore 17:00</span></p>
   </div>
 
   <script id="fs" type="x-shader/x-fragment">#version 300 es
@@ -236,13 +244,12 @@
 
     let move = [0, 0];
     let wheel = [0, 0];
-    let isMouseDown = false;
-    let lastMouse = [0, 0];
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = window.innerWidth * dpr;
-      const h = window.innerHeight * dpr;
+      // Ottimizzazione DPR per dispositivi mobili
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const w = Math.floor(window.innerWidth * dpr);
+      const h = Math.floor(window.innerHeight * dpr);
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
@@ -250,22 +257,62 @@
       }
     }
 
-    // Interazioni fluide di background
+    // --- Gestione Eventi Touch & Mouse ---
+    let isInteracting = false;
+    let lastPos = [0, 0];
+    let touchStartDist = 0;
+
+    function getTouchDist(e) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Touch Event Listeners
+    window.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        isInteracting = true;
+        lastPos = [e.touches[0].clientX, e.touches[0].clientY];
+      } else if (e.touches.length === 2) {
+        isInteracting = false;
+        touchStartDist = getTouchDist(e);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length === 1 && isInteracting) {
+        const dx = e.touches[0].clientX - lastPos[0];
+        const dy = e.touches[0].clientY - lastPos[1];
+        move[0] += dx * 1.5;
+        move[1] += dy * 1.5;
+        lastPos = [e.touches[0].clientX, e.touches[0].clientY];
+      } else if (e.touches.length === 2) {
+        const dist = getTouchDist(e);
+        const delta = touchStartDist - dist;
+        wheel[1] += delta * 2;
+        touchStartDist = dist;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => { isInteracting = false; }, { passive: true });
+
+    // Mouse Event Listeners
     window.addEventListener('mousedown', e => {
-      isMouseDown = true;
-      lastMouse = [e.clientX, e.clientY];
+      isInteracting = true;
+      lastPos = [e.clientX, e.clientY];
     });
 
     window.addEventListener('mousemove', e => {
-      if (!isMouseDown) return;
-      move[0] += e.clientX - lastMouse[0];
-      move[1] += e.clientY - lastMouse[1];
-      lastMouse = [e.clientX, e.clientY];
+      if (!isInteracting) return;
+      move[0] += e.clientX - lastPos[0];
+      move[1] += e.clientY - lastPos[1];
+      lastPos = [e.clientX, e.clientY];
     });
 
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    window.addEventListener('wheel', e => { wheel[1] += e.deltaY; });
+    window.addEventListener('mouseup', () => isInteracting = false);
+    window.addEventListener('wheel', e => { wheel[1] += e.deltaY; }, { passive: true });
 
+    // Render Loop
     const startTime = performance.now();
 
     function loop(now) {
