@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <!-- Forziamo la barra di stato di Safari a coordinarsi con il tema -->
-<meta id="theme-color-meta" name="theme-color" content="#cd8373">
+<meta name="theme-color" content="#cd8373">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Yuri_VIP_Tickets</title>
@@ -22,28 +22,32 @@
 }
 
 html {
-    background-color: #cd8373; /* Colore iniziale della parte superiore */
+    background-color: #cd8373; /* Stesso colore iniziale dello splash */
     height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
-    /* Impedisce lo stacco bianco durante il bounce su iOS */
-    -webkit-text-size-adjust: 100%;
+    overflow: hidden; /* Impedisce il molleggio (bounce) durante lo splash */
+    transition: background-color 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Quando la pagina entra in fase 2, aggiorniamo anche lo sfondo della radice */
 html.phase-two {
-    background-color: #0d0b18; /* Sfondo scuro per lo scroll successivo */
+    background-color: #0d0b18; /* Il colore scuro finale del sito */
+    overflow: auto; /* Sblocca lo scroll per la pagina vera e propria */
 }
 
 body {
     width: 100%;
+    height: 100%;
     min-height: 100vh;
-    /* Adatta l'altezza al 100% dell'area visibile escludendo le barre di Safari */
-    min-height: -webkit-fill-available; 
+    min-height: -webkit-fill-available;
     margin: 0;
     padding: 0;
-    background-color: transparent;
-}/* Regolazione del Wrapper per coprire la Dynamic Island e l'Home Indicator */
+    background-color: transparent; /* Lasciamo che sia html a gestire il colore di fondo */
+    overflow-x: hidden;
+}
+/* Regolazione del Wrapper per coprire la Dynamic Island e l'Home Indicator */
 .wrapper {
     position: relative;
     width: 100%;
@@ -256,18 +260,14 @@ body {
     justify-content: center;
     text-align: center;
     width: 100%;
-    min-height: 100dvh; /* Usa dvh per Safari iOS */
+    /* Garantisce che copra tutto lo schermo dello smartphone senza lasciare buchi sotto */
+    min-height: 100dvh; 
     box-sizing: border-box;
-    
-    /* Riduce la spaziatura e compensa la notch/Dynamic Island */
-    padding-top: max(env(safe-area-inset-top), 20px);
-    padding-bottom: max(env(safe-area-inset-bottom), 20px);
-    padding-left: 1rem;
-    padding-right: 1rem;
-    
+    padding: calc(env(safe-area-inset-top) + 2rem) 1rem calc(env(safe-area-inset-bottom) + 1.5rem) 1rem;
     position: relative;
     z-index: 10;
 }
+
 /* SOTTOTITOLO ("biglietto di invito da:") */
 .invitation-header .subtitle {
     display: block;
