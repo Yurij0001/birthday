@@ -55,17 +55,7 @@ ScrollTrigger.create({
     trigger: ".scrollElement",
     start: "top top",
     end: "bottom bottom",
-    scrub: defaultScrub,
-    onEnter: () => {
-        // Quando lo scroll entra nella sezione
-        document.getElementById('theme-color-meta')?.setAttribute('content', '#0d0b18');
-        document.documentElement.classList.add('phase-two');
-    },
-    onLeaveBack: () => {
-        // Quando l'utente torna in cima prima del trigger
-        document.getElementById('theme-color-meta')?.setAttribute('content', '#cd8373');
-        document.documentElement.classList.remove('phase-two');
-    }
+    scrub: defaultScrub
 });
 
 // Slides: Durata ridotta da 2s a 1s e pause diminuite da 2s a 0.5s per massima fluidità
