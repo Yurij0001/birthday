@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Yuri_VIP_Tickets</title>
     <link rel="icon" type="image/svg+xml" href="profilo_yuri_w.svg">
 
@@ -16,31 +16,36 @@
     padding: 0;
 }
 
-/* 1. L'elemento html e body devono occupare tutto lo schermo mobile */
-html, body {
+html {
+    background-color: #0d0b18; /* Stesso colore dello sfondo principale */
+    height: 100%;
     width: 100%;
-    min-height: 100svh;
-    margin: 0;
-    padding: 0;
-    background-color: #0d0b18; /* Evita bande bianche durante lo scroll */
     overflow-x: hidden;
 }
 
 body {
+    width: 100%;
+    /* -webkit-fill-available corregge il bug storico dell'altezza su Safari iOS */
+    min-height: 100vh;
+    min-height: -webkit-fill-available; 
+    margin: 0;
+    padding: 0;
     font-family: "Canva Sans", Arial, Helvetica, sans-serif;
+    background-color: #0d0b18;
+    overflow-x: hidden;
     color: #ffffff;
 }
 
-/* 2. Il wrapper si adatta esattamente all'altezza dinamica dello schermo */
+/* Regolazione del Wrapper per coprire la Dynamic Island e l'Home Indicator */
 .wrapper {
     position: relative;
     width: 100%;
-    min-height: 100dvh; /* dvh si adatta in tempo reale alle barre del browser mobile */
-    display: flex;
-    flex-direction: column;
-    /* Gestisce l'area sicura per i telefoni con notch/barra gesture */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    /* Inserisce il margine di sicurezza dinamico per iPhone */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+    box-sizing: border-box;
 }
 
         /* SVG di Sfondo */
@@ -416,22 +421,27 @@ body {
 }
 
 /* SPLASH SCREEN STYLES */
-#splashScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100dvh;
-            background-color: #cd8373;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: background-color 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
-        }
+	    #splashScreen {
+    position: fixed;
+    /* Ancorare esplicitamente tutti e 4 i lati a 0 forza la copertura totale del viewport */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    /* Fallback e correzione specifica per il motore WebKit di iOS */
+    height: -webkit-fill-available;
+    background-color: #cd8373;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
+    /* Evita lo scorrimento indesiderato dello sfondo mentre lo splash è visibile */
+    touch-action: none; 
+}
 
         #splashScreen.phase-two {
             background-color: var(--bg-main);
