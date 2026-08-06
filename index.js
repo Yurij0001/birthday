@@ -1,6 +1,3 @@
-// =========================================================
-// CONFIGURAZIONE E INIZIALIZZAZIONE FIREBASE
-// =========================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAIh13ACMcJwM3aQSoAL9T8PHa0tgdXQaQ",
   authDomain: "my-birthday-c655e.firebaseapp.com",
@@ -8,12 +5,13 @@ const firebaseConfig = {
   projectId: "my-birthday-c655e",
   storageBucket: "my-birthday-c655e.firebasestorage.app",
   messagingSenderId: "41671293257",
-  appId: "1:41671293257:web:6e94e53376b0402629c298",
-  measurementId: "G-JH6LPVBT4N"
+  appId: "1:41671293257:web:6e94e53376b0402629c298"
 };
 
-// Avvia Firebase e il Realtime Database
-firebase.initializeApp(firebaseConfig);
+// Inizializzazione Firebase
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.database();
 
 // VERIFICA CONNESSIONE DATABASE
@@ -45,7 +43,7 @@ mm.add("(max-width: 1922px)", () => {
 });
 
 /* =========================================================
-   ANIMAZIONE TESTI / SLIDES (Accelerata)
+   ANIMAZIONE TESTI / SLIDES
    ========================================================= */
 
 let storyTL = gsap.timeline();
@@ -58,7 +56,6 @@ ScrollTrigger.create({
     scrub: defaultScrub
 });
 
-// Slides: Durata ridotta da 2s a 1s e pause diminuite da 2s a 0.5s per massima fluidità
 storyTL.to("#slide1", { opacity: 1, y: 0, duration: 1 })
        .to("#slide1", { opacity: 0, y: -20, duration: 1 }, "+=0.5");
 
@@ -81,7 +78,7 @@ storyTL.to("#slide7", { opacity: 1, y: 0, duration: 1 });
 
 
 /* =========================================================
-   ANIMAZIONE SFONDO SVG (Scrub ridotto per reattività)
+   ANIMAZIONE SFONDO SVG
    ========================================================= */
 
 /* SCENE 1 */
@@ -328,71 +325,239 @@ function spawnHearts(event) {
    LOGICA DEL GUESTBOOK E SALVATAGGIO
    ========================================================= */
 
-let tempGuestName = ""; 
 let selectedChoice = ""; 
-const DEV_PIN = "cazzu cazzu"; 
+const DEV_PIN = "1234"; 
 let devClickCount = 0;
 let devClickTimer = null;
 let msgTimeout = null;
+let mainChoice = "";
+let mainGuestName = "";
+let secondGuestName = "";
 
+function generate5DigitCode() {
+    return Math.floor(10000 + Math.random() * 90000).toString();
+}
+
+// Funzione di validazione (richiede almeno Nome e Cognome)
 function validateNameInput(rawValue) {
     if (!rawValue) return false;
     const words = rawValue.trim().split(/\s+/).filter(word => word.length > 0);
     return words.length >= 2;
 }
 
+function normalizeChoice(text) {
+    if (!text) return "";
+    const clean = text.trim().toLowerCase();
+    if (clean === "sì" || clean === "si") return "Sì";
+    if (clean === "no") return "No";
+    if (clean.includes("ci penso")) return "Ci penso sù";
+    return text.trim();
+}
+
+function handleStep1(choiceText, event) {
+    const mainGuestInput = document.getElementById('guest-input');
+    const mainGuestName = mainGuestInput ? mainGuestInput.value.trim() : "";
+
+    if (!validateNameInput(mainGuestName)) {
+        if (mainGuestInput) {
+            mainGuestInput.focus();
+            mainGuestInput.classList.add('input-error');
+        }
+        showTempMessage("⚠️ Inserisci prima Nome e Cognome in cima alla pagina!", true);
+        return;
+    }
+
+    const choice = normalizeChoice(choiceText);
+    const validChoices = ["Sì", "No", "Ci penso sù"];
+    
+    if (!validChoices.includes(choice)) return;
+
+    selectedChoice = choice;
+
+    if (selectedChoice === 'Sì') {
+        if (typeof spawnHearts === 'function') spawnHearts(event);
+        
+        // Passa al passaggio successivo per l'accompagnatore
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        if (step1) step1.classList.add('d-none');
+        if (step2) step2.classList.remove('d-none');
+    } else {
+        // Se sceglie "No" o "Ci penso sù", salva subito su Firebase
+        submitFirebaseResponse(mainGuestName, selectedChoice, "no");
+    }
+}
+
+// STEP 2: L'utente conferma il proprio Nome e Cognome
+function confirmMainGuest() {
+    const input = document.getElementById('guest-input');
+    const val = input.value.trim();
+
+    if (!validateNameInput(val)) {
+        input.classList.add('input-error');
+        showTempMessage("❌ Inserisci sia Nome che Cognome!", true);
+        return;
+    }
+
+    input.classList.remove('input-error');
+    mainGuestName = val;
+
+    if (mainChoice === 'Sì') {
+        // Se ha detto Sì, passa alla domanda sull'accompagnatore
+        document.getElementById('step-2').classList.add('d-none');
+        document.getElementById('step-3').classList.remove('d-none');
+    } else {
+        // Se ha detto No/Ci penso sù, salva subito
+        submitFirebaseResponse(mainGuestName, mainChoice, "");
+    }
+}
+
+// STEP 3: L'utente sceglie se portare qualcuno (Sì / No)
+function handleStep3(hasSecondGuest, event) {
+    if (hasSecondGuest) {
+        if (typeof spawnHearts === 'function') spawnHearts(event);
+        
+        // Nasconde lo Step 3 e mostra lo Step 4 (nome 2° partecipante)
+        document.getElementById('step-3').classList.add('d-none');
+        document.getElementById('step-4').classList.remove('d-none');
+        document.getElementById('additional-guest-input').focus();
+    } else {
+        // Se sceglie No, salva semplicemente la risposta
+        submitFirebaseResponse(mainGuestName, mainChoice, "Nessuno");
+    }
+}
+
+// STEP 4: L'utente inserisce il nome del 2° partecipante e salva
+function confirmSecondGuest() {
+    const mainGuestName = document.getElementById('guest-input').value.trim();
+    const additionalInput = document.getElementById('additional-guest-input');
+    const additionalName = additionalInput ? additionalInput.value.trim() : "";
+
+    if (!validateNameInput(additionalName)) {
+        if (additionalInput) additionalInput.classList.add('input-error');
+        showTempMessage("❌ Inserisci Nome e Cognome del 2° partecipante!", true);
+        return;
+    }
+
+    // Salva con la risposta memorizzata prima e il nome del 2° partecipante
+    submitFirebaseResponse(mainGuestName, selectedChoice, additionalName);
+}
+
 function showTempMessage(text, isError = false) {
     const tempMsg = document.getElementById('temp-saved-msg');
     if (!tempMsg) return;
 
-    if (msgTimeout) clearTimeout(msgTimeout);
-
     tempMsg.innerHTML = text;
     tempMsg.classList.remove('d-none');
-    tempMsg.className = isError ? 'msg-underneath error-msg' : 'msg-underneath success-msg';
+    tempMsg.style.color = isError ? "#ef4444" : "#22c55e";
 
-    msgTimeout = setTimeout(() => {
+    setTimeout(() => {
         tempMsg.classList.add('d-none');
-    }, 2000);
+    }, 3500);
 }
 
-function saveToDevList(name, choice) {
-    let list = JSON.parse(localStorage.getItem('dev_responses_list')) || [];
-    const existingIndex = list.findIndex(item => item.name.toLowerCase() === name.toLowerCase());
+function handleAccompanist(hasAccompanist, event) {
+    const mainGuestName = document.getElementById('guest-input').value.trim();
 
-    const updatedEntry = {
-        name: name,
-        choice: choice,
-        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    if (hasAccompanist) {
+        if (typeof spawnHearts === 'function') spawnHearts(event);
+
+        const step2 = document.getElementById('step-2');
+        const step3 = document.getElementById('step-3');
+        const addInput = document.getElementById('additional-guest-input');
+
+        if (step2) step2.classList.add('d-none');
+        if (step3) step3.classList.remove('d-none');
+        if (addInput) addInput.focus();
+    } else {
+        submitFirebaseResponse(mainGuestName, selectedChoice, "no");
+    }
+}
+
+// STEP 3: Inserimento del 2° partecipante
+function confirmSecondGuest() {
+    const mainGuestName = document.getElementById('guest-input').value.trim();
+    const additionalInput = document.getElementById('additional-guest-input');
+    const additionalName = additionalInput ? additionalInput.value.trim() : "";
+
+    if (!validateNameInput(additionalName)) {
+        if (additionalInput) additionalInput.classList.add('input-error');
+        showTempMessage("❌ Inserisci Nome e Cognome del 2° partecipante!", true);
+        return;
+    }
+
+    submitFirebaseResponse(mainGuestName, selectedChoice, additionalName);
+}
+
+
+// FUNZIONE PER L'INVIO DEFINITIVO (PULSANTE CONFERMA CON OSPITE AGGIUNTIVO)
+function confirmFullInvitation() {
+    const guestInput = document.getElementById('guest-input');
+    const additionalInput = document.getElementById('additional-guest-input');
+
+    const guestName = guestInput ? guestInput.value.trim() : "";
+    const additionalGuestName = additionalInput ? additionalInput.value.trim() : "";
+
+    if (!validateNameInput(guestName)) {
+        showTempMessage("❌ Inserisci il tuo Nome e Cognome!", true);
+        return;
+    }
+
+    if (additionalGuestName && !validateNameInput(additionalGuestName)) {
+        if (additionalInput) additionalInput.classList.add('input-error');
+        showTempMessage("❌ Inserisci anche Nome e Cognome dell'ospite!", true);
+        return;
+    }
+
+    submitFirebaseResponse(guestName, selectedChoice || "Sì", additionalGuestName);
+}
+
+// FUNZIONE DI INVIO EFFETTIVO SU FIREBASE
+function submitFirebaseResponse(guestName, choiceText, secondGuestValue = "no") {
+    const code = generate5DigitCode();
+
+    const payload = {
+        nome: guestName,
+        codice: code,
+        data: new Date().toLocaleString('it-IT'),
+        second: secondGuestValue,
+        choise: choiceText,
+        ticket: ""
     };
 
-    if (existingIndex !== -1) {
-        list[existingIndex] = updatedEntry;
-    } else {
-        list.push(updatedEntry);
-    }
+    db.ref('responses/' + code).set(payload).then(() => {
+        // Nasconde i passaggi del form
+        document.querySelectorAll('.flow-step').forEach(el => el.classList.add('d-none'));
 
-    localStorage.setItem('dev_responses_list', JSON.stringify(list));
-}
+        // Mostra il messaggio di conferma
+        const confirmMsg = document.getElementById('confirmation-msg');
+        if (confirmMsg) {
+            confirmMsg.classList.remove('d-none');
+            let detailText = "";
+            if (secondGuestValue !== "no" && secondGuestValue !== "") {
+                detailText = `<br><small style="color:#a1a1aa; font-weight:normal;">+ 2° Ospite: ${secondGuestValue}</small>`;
+            }
 
-function tryAutoSave() {
-    const guestInput = document.getElementById('guest-input');
-    const nameValue = guestInput ? guestInput.value.trim() : "";
-
-    if (validateNameInput(nameValue) && selectedChoice !== "") {
-        saveToDevList(nameValue, selectedChoice);
-        showTempMessage(`✅ Registrato: <strong>${nameValue}</strong>`);
-        return true;
-    }
-    return false;
+            confirmMsg.innerHTML = `
+                <div style="margin-top:20px; font-weight:bold; color:#22c55e; font-size: 1.1rem;">
+                    ✓ Risposta salvata con successo!<br>
+                    <span style="font-size:0.95rem; color:#ffffff;">Grazie ${guestName}! (${choiceText})</span><br>
+                    <small style="color:#a1a1aa; font-weight:normal;">Codice Invito: <strong>#${code}</strong></small>
+                    ${detailText}
+                </div>
+            `;
+        }
+    }).catch((error) => {
+        console.error("Errore Firebase:", error);
+        showTempMessage("⚠️ Si è verificato un errore durante il salvataggio.", true);
+    });
 }
 
 /* =========================================================
-   INIZIALIZZAZIONE EVENTI ALLA CARICAMENTO PAGINA (DOM)
+   EVENTI INIZIALI DOM
    ========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
     const guestInput = document.getElementById('guest-input');
-    const choiceButtons = document.querySelectorAll('.choice-btn');
     const devTrigger = document.getElementById('dev-secret-trigger');
 
     if (guestInput) {
@@ -407,51 +572,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!validateNameInput(nameValue)) {
                     guestInput.classList.add('input-error');
-                    showTempMessage("❌ Inserisci anche il cognome!", true);
+                    showTempMessage("❌ Inserisci Nome e Cognome!", true);
                     return;
                 }
 
                 guestInput.blur();
-
-                if (selectedChoice !== "") {
-                    tryAutoSave();
-                } else {
-                    showTempMessage(`👤 Nome: <strong>${nameValue}</strong>, registrato`);
-                }
-            }
-        });
-
-        guestInput.addEventListener('blur', () => {
-            const nameValue = guestInput.value.trim();
-            if (validateNameInput(nameValue) && selectedChoice !== "") {
-                tryAutoSave();
+                showTempMessage(`👤 Nome: <strong>${nameValue}</strong> registrato`);
             }
         });
     }
-
-    choiceButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            selectedChoice = btn.innerText.trim();
-
-            choiceButtons.forEach(b => b.classList.remove('selected-choice'));
-            btn.classList.add('selected-choice');
-
-            const nameValue = guestInput ? guestInput.value.trim() : "";
-
-            if (validateNameInput(nameValue)) {
-                tryAutoSave();
-                if (selectedChoice.toLowerCase() === 'sì' || selectedChoice.toLowerCase() === 'si') {
-                    spawnHearts(e);
-                }
-            } else {
-                if (guestInput) {
-                    guestInput.focus();
-                    guestInput.classList.add('input-error');
-                }
-                showTempMessage("Scrivi Nome e Cognome per confermare!", true);
-            }
-        });
-    });
 
     if (devTrigger) {
         devTrigger.addEventListener('click', () => {
@@ -474,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkPinAndOpenDev() {
     const inputPin = prompt("[DEV MODE] Inserisci il PIN di accesso:");
     if (inputPin === DEV_PIN) {
-        listenToDevList(); // Avvia l'ascolto in tempo reale da Firebase
+        listenToDevList(); 
         const devModal = document.getElementById('dev-modal');
         if (devModal) devModal.classList.remove('d-none');
     } else if (inputPin !== null) {
@@ -487,90 +616,54 @@ function listenToDevList() {
     const listContainer = document.getElementById('dev-guest-list');
     if (!listContainer) return;
 
-    // db.ref('responses') legge il nodo del database dove salviamo i voti
     db.ref('responses').on('value', (snapshot) => {
         listContainer.innerHTML = "";
         const data = snapshot.val();
 
         if (!data) {
-            listContainer.innerHTML = "<li style='justify-content: center; color: #a1a1aa;'>Nessuna risposta ancora registrata nel database.</li>";
+            listContainer.innerHTML = "<li style='justify-content: center; color: #a1a1aa;'>Nessuna risposta nel database.</li>";
             return;
         }
 
-        // Cicla tutte le risposte presenti su Firebase
         Object.keys(data).forEach((key) => {
             const item = data[key];
             const li = document.createElement('li');
-            li.innerHTML = `
-                <div class="dev-item-info">
-                    <span><strong>${item.name}</strong> (${item.choice})</span>
-                    <small style="color:#a1a1aa; font-size:0.75rem;">${item.date}</small>
-                </div>
-                <div class="dev-item-actions">
-                    <button class="btn-delete-item" onclick="deleteDevItem('${key}')" title="Elimina risposta">
-                        <svg class="trash-icon" viewBox="0 0 24 24">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
+            li.style.cssText = "display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;";
+
+            // Risposta sempre visibile accanto al nome
+            const mainHeader = `
+                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleDevDetails('${key}')">
+                    <span style="font-weight: bold; color: #fff;">
+                        ${item.nome || 'Senza nome'} 
+                        <span style="color: #ff9171; font-weight: normal; margin-left: 6px;">[${item.choise || 'N/A'}]</span>
+                    </span>
+                    <button class="btn-delete-item" onclick="event.stopPropagation(); deleteDevItem('${key}')" title="Elimina" style="background:none; border:none; color:#ef4444; cursor:pointer;">
+                        🗑️
                     </button>
                 </div>
             `;
+
+            // Dettagli aggiuntivi nascosti che spuntano al click sul nome
+            const detailsBlock = `
+                <div id="details-${key}" class="d-none" style="margin-top: 6px; font-size: 0.82rem; color: #a1a1aa; padding-left: 6px; border-left: 2px solid #ff9171;">
+                    <div>📌 <strong>Codice:</strong> #${item.codice || key}</div>
+                    <div>📅 <strong>Data:</strong> ${item.data || 'N/A'}</div>
+                    <div>👥 <strong>2° Partecipante:</strong> ${item.second || 'no'}</div>
+                    <div>🎟️ <strong>Ticket:</strong> ${item.ticket !== "" ? item.ticket : '(vuoto)'}</div>
+                </div>
+            `;
+
+            li.innerHTML = mainHeader + detailsBlock;
             listContainer.appendChild(li);
         });
     });
 }
 
-let pendingChoice = null;
-
-// FUNZIONE PER SELEZIONARE LA SCELTA (SÌ / NO)
-function selectOption(button) {
-    const choiceText = button.innerText.trim();
-    pendingChoice = choiceText; // Memorizziamo la scelta effettuata
-
-    // Evidenziamo visivamente il pulsante cliccato (facoltativo ma molto utile)
-    document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('active', 'selected-choice'));
-    button.classList.add('active', 'selected-choice');
-
-    // Recuperiamo l'input del nome
-    const nameInput = document.getElementById('guest-name-input') || document.querySelector('input[type="text"]');
-    const guestName = nameInput ? nameInput.value.trim() : "";
-
-    // SE IL NOME NON È ANCORA STATO INSERITO:
-    if (!guestName) {
-        alert(`Hai selezionato "${choiceText}". Ora inserisci Nome e Cognome per confermare!`);
-        if (nameInput) nameInput.focus(); // Porta automaticamente il cursore nel campo nome
-        return;
+function toggleDevDetails(key) {
+    const el = document.getElementById('details-' + key);
+    if (el) {
+        el.classList.toggle('d-none');
     }
-
-    // SE IL NOME C'È GIÀ: Invia subito a Firebase
-    submitFirebaseResponse(guestName, choiceText);
-}
-
-// FUNZIONE DI INVIO EFFETTIVO SU FIREBASE
-function submitFirebaseResponse(guestName, choiceText) {
-    const guestId = guestName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const userRef = db.ref('responses/' + guestId);
-
-    userRef.once('value').then((snapshot) => {
-        const exists = snapshot.exists();
-
-        return userRef.set({
-            name: guestName,
-            choice: choiceText,
-            date: new Date().toLocaleString('it-IT')
-        }).then(() => {
-            if (exists) {
-                alert(`La tua risposta è stata modificata in "${choiceText}"!`);
-            } else {
-                alert(`Grazie ${guestName}! La tua risposta "${choiceText}" è stata salvata.`);
-            }
-        });
-    }).catch((error) => {
-        console.error("Errore Firebase:", error);
-        alert("Si è verificato un errore durante il salvataggio. perfavore Riprova!");
-    });
 }
 
 function deleteDevItem(key) {
