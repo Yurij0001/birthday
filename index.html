@@ -8,13 +8,8 @@
 <meta name="theme-color" content="#cd8373">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Yuri_Tickets_4G</title>
+    <title>Yuri_VIP_Tickets</title>
     <link rel="icon" type="image/svg+xml" href="profilo_yuri_w.svg">
-	<link rel="icon" type="image/svg+xml" href="profilo_yuri_w.svg">
-
-    <!-- Icona per la schermata Home (iOS / iPadOS / Android) -->
-    <link rel="apple-touch-icon" href="profilo_yuri_w.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="profilo_yuri_w.png">
 
 
 
@@ -551,7 +546,7 @@ margin-top: 50px;
     top: 0;
     left: 0;
     width: 40px;
-    height: 80px;
+    height: 40px;
     z-index: 99999; /* Sta sopra a qualsiasi header/logo */
     cursor: pointer;
 }
@@ -1289,20 +1284,53 @@ margin-top: 50px;
             </div>
 
             <div class="slide" id="slide7">
-                <h2>Ti aspetto...</h2>
-                <p>Vuoi far parte dei nostri?</p>
+    <h2>Ti aspetto...</h2>
 
-                
-                <div class="options-group">
-    <button class="choice-btn" onclick="selectOption(this); spawnHearts(event);">Sì</button>
-    <button class="choice-btn" onclick="selectOption(this);">Ci penso sù</button>
-    <button class="choice-btn" onclick="selectOption(this);">No</button>
-<p class="gift-note"> Nessun dono è dovuto, ma ogni pensiero sarà gradito.</p>
+    <!-- STEP 1: Scelta Partecipazione -->
+    <div id="step-1" class="flow-step">
+        <p>Vuoi far parte dei nostri?</p>
+        <div class="options-group">
+            <button class="choice-btn" onclick="handleStep1('Sì', event)">Sì</button>
+            <button class="choice-btn" onclick="handleStep1('Ci penso sù', event)">Ci penso sù</button>
+            <button class="choice-btn" onclick="handleStep1('No', event)">No</button>
+        </div>
+        <p class="gift-note">Nessun dono è dovuto, ma ogni pensiero sarà gradito.</p>
+    </div>
+<div style="margin-top: 15px;">
+            <a href="./index.html/" class="choice-btn ticket-btn" style="text-decoration: none; display: inline-block;">
+                🎫 Vai al mio ticket
+            </a>
+        </div>
+    <!-- STEP 2: Domanda Accompagnatore (Nascosto di default, compare se clicca "Sì") -->
+    <div id="step-2" class="flow-step d-none">
+        <p>Vuoi portare qualcuno?</p>
+        <div class="options-group">
+            <button class="choice-btn" onclick="handleAccompanist(true, event)">Sì</button>
+            <button class="choice-btn" onclick="handleAccompanist(false, event)">No</button>
+        </div>
+    </div>
+
+    <!-- STEP 3: Nome 2° Partecipante (Nascosto di default, compare se sceglie "Sì" all'accompagnatore) -->
+    <div id="step-3" class="flow-step d-none">
+        <p>Inserisci Nome e Cognome del 2° partecipante:</p>
+        <div class="input-wrapper" style="margin-bottom: 12px;">
+            <input 
+                type="text" 
+                id="additional-guest-input" 
+                class="guest-input-style" 
+                placeholder="Nome e Cognome 2° partecipante..." 
+                autocomplete="off"
+            >
+        </div>
+        <button class="choice-btn" onclick="confirmSecondGuest()">Conferma e Salva</button>
+    </div>
+
+    <!-- Messaggio di avviso/errore temporaneo -->
+    <div id="temp-saved-msg" class="name-badge d-none"></div>
+
+    <!-- Messaggio di conferma finale salvataggio -->
+    <div id="confirmation-msg"></div>
 </div>
-
-
-                <div id="confirmation-msg"></div>
-            </div>
 
         </div>
 
